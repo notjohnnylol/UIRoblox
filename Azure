@@ -1,19 +1,49 @@
+-- Define the NeverZen table
+local NeverZen = {
+    Version = '1.1',
+    Services = {},
+    Lucide = {}, -- Icon table truncated for brevity
+}
+
+-- Set up metatable to support method calls
+setmetatable(NeverZen, {
+    __index = NeverZen
+})
+
+-- Existing services and utilities (unchanged)
+NeverZen.Services = {
+    UserInputService = cloneref(game:GetService('UserInputService')),
+    Players = cloneref(game:GetService('Players')),
+    ContentProvider = cloneref(game:GetService('ContentProvider')),
+    CoreGui = cloneref(game:FindFirstChild('CoreGui')),
+}
+NeverZen.ProtectGui = protect_gui or protectgui or (syn and syn.protect_gui) or function() end
+NeverZen.Services.CoreGui = (gethui and gethui()) or NeverZen.Services.CoreGui or game:GetService('Players').LocalPlayer.PlayerGui
+
+-- Add CreateSaveManager method
 function NeverZen:CreateSaveManager(config)
     config = config or {}
     config.Folder = config.Folder or "NeverZenConfigs"
 
     local SaveManager = {}
     local HttpService = game:GetService("HttpService")
+    
+    -- Ensure the folder exists
     if not isfolder(config.Folder) then
         makefolder(config.Folder)
     end
+    
     local function getFilePath(configName)
         return config.Folder .. "/" .. configName .. ".json"
     end
+    
+    -- Save data to a file
     SaveManager.Save = function(self, configName, data)
         local jsonData = HttpService:JSONEncode(data)
         writefile(getFilePath(configName), jsonData)
     end
+    
+    -- Load data from a file, or return default if not found
     SaveManager.Load = function(self, configName, default)
         if isfile(getFilePath(configName)) then
             local jsonData = readfile(getFilePath(configName))
@@ -21,11 +51,15 @@ function NeverZen:CreateSaveManager(config)
         end
         return default or {}
     end
+    
+    -- Delete a config file
     SaveManager.Delete = function(self, configName)
         if isfile(getFilePath(configName)) then
             delfile(getFilePath(configName))
         end
     end
+    
+    -- Get list of all config files
     SaveManager.GetConfigs = function(self)
         local configs = {}
         if isfolder(config.Folder) then
@@ -38,21 +72,46 @@ function NeverZen:CreateSaveManager(config)
         end
         return configs
     end
+    
+    return SaveManager
+end
 
-cloneref = cloneref or function(...) return ... end;
-cloenfunction = cloenfunction or function(...) return ... end;
-hookfunction = hookfunction or function(a,b) return a end;
+-- Add a method to manage settings for UI elements
+NeverZen.Settings = {}
+function NeverZen:AddSetting(name, value)
+    self.Settings[name] = value
+end
 
-export type Services = {
-	UserInputService : UserInputService,
-	Players : Players,
-	ContentProvider : ContentProvider,
-	CoreGui : PlayerGui
-};
+function NeverZen:GetSetting(name)
+    return self.Settings[name]
+end
 
-local NeverZen = {
-	Version = '1.1'	
-};
+function NeverZen:SaveSettings(configName)
+    local saveManager = self:CreateSaveManager()
+    saveManager:Save(configName, self.Settings)
+end
+
+function NeverZen:LoadSettings(configName)
+    local saveManager = self:CreateSaveManager()
+    self.Settings = saveManager:Load(configName, {})
+    -- Apply loaded settings to UI elements
+    for name, value in pairs(self.Settings) do
+        local element = self:GetElementByName(name) -- Hypothetical method; implement as needed
+        if element and element.SetValue then
+            element:SetValue(value)
+        end
+    end
+end
+
+-- Hypothetical method to find UI elements by name (implement based on your UI structure)
+function NeverZen:GetElementByName(name)
+    -- This would search through tabs/sections/elements; placeholder for now
+    -- Example: Loop through WindowSignal.Tabs, Sections, and their elements
+    return nil -- Replace with actual implementation
+end
+
+-- Ensure the script returns the NeverZen table
+return NeverZen
 
 NeverZen.Services = {
 	UserInputService = cloneref(game:GetService('UserInputService')),
