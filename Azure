@@ -1,47 +1,43 @@
 function NeverZen:CreateSaveManager(config)
     config = config or {}
-    config.DataStoreName = config.DataStoreName or "NeverZenConfig"
-    config.SaveKey = config.SaveKey or "UserConfig_" .. NeverZen.Services.Players.LocalPlayer.UserId
+    config.Folder = config.Folder or "NeverZenConfigs"
 
-    local DataStoreService = game:GetService("DataStoreService")
-    local SaveDataStore = DataStoreService:GetDataStore(config.DataStoreName)
-    local SavedData = {}
-    local success, loadedData = pcall(function()
-        return SaveDataStore:GetAsync(config.SaveKey)
-    end)
-    if success and loadedData then
-        SavedData = loadedData
-    else
-        SavedData = {}
+    local SaveManager = {}
+    local HttpService = game:GetService("HttpService")
+    if not isfolder(config.Folder) then
+        makefolder(config.Folder)
     end
-
-    return {
-        Save = function(self, key, value)
-            SavedData[key] = value
-            local success, err = pcall(function()
-                SaveDataStore:SetAsync(config.SaveKey, SavedData)
-            end)
-            if not success then
-                warn("Failed to save data: " .. err)
-            end
-        end,
-        Load = function(self, key, default)
-            return SavedData[key] ~= nil and SavedData[key] or default
-        end,
-        Clear = function(self)
-            SavedData = {}
-            local success, err = pcall(function()
-                SaveDataStore:SetAsync(config.SaveKey, SavedData)
-            end)
-            if not success then
-                warn("DATA ERR: " .. err)
-            end
-        end,
-        GetAll = function(self)
-            return SavedData
+    local function getFilePath(configName)
+        return config.Folder .. "/" .. configName .. ".json"
+    end
+    SaveManager.Save = function(self, configName, data)
+        local jsonData = HttpService:JSONEncode(data)
+        writefile(getFilePath(configName), jsonData)
+    end
+    SaveManager.Load = function(self, configName, default)
+        if isfile(getFilePath(configName)) then
+            local jsonData = readfile(getFilePath(configName))
+            return HttpService:JSONDecode(jsonData)
         end
-    }
-end
+        return default or {}
+    end
+    SaveManager.Delete = function(self, configName)
+        if isfile(getFilePath(configName)) then
+            delfile(getFilePath(configName))
+        end
+    end
+    SaveManager.GetConfigs = function(self)
+        local configs = {}
+        if isfolder(config.Folder) then
+            for _, file in pairs(listfiles(config.Folder)) do
+                local configName = file:match("([^/\\]+)%.json$")
+                if configName then
+                    table.insert(configs, configName)
+                end
+            end
+        end
+        return configs
+    end
 
 cloneref = cloneref or function(...) return ... end;
 cloenfunction = cloenfunction or function(...) return ... end;
